@@ -22,21 +22,27 @@ export async function markPaid(req: Request, env: Env, orderId: string): Promise
       const items: any[] = order.items || []
       if (!items.length) throw new Error('Order has no items')
 
-      const productIds = [...new Set(items.map((i) => i.productId).filter(Boolean))]
-      const prods = productIds.length
-        ? await q(`SELECT id, data FROM products WHERE id = ANY($1)`, [productIds]) : []
-      const priceMap: Record<string, any> = {}
-      for (const p of prods) priceMap[p.id] = p.data
-
-      const orderTotal = items.reduce((sum, it) => {
-        const p = priceMap[it.productId] || {}
-        // Must match the frontend lineTotal() in OrderDetail.tsx exactly.
-        const unit = Number(p.unitCost ?? p.price ?? 0)
-        return sum + Number(it.qtyPackages ?? it.qty ?? 0) * Number(p.unitsPerPackage ?? 1) * unit
-      }, 0)
+      // The order's cost is registered at booking — use the stored value.
+      // Only recompute (unit price × qty; unitsPerPackage is NOT a multiplier)
+      // for legacy orders that never stored a total.
+      const stored = order.total ?? order.orderTotal
+      let orderTotal: number
+      if (stored != null && stored !== '' && Number.isFinite(Number(stored))) {
+        orderTotal = Number(stored)
+      } else {
+        const productIds = [...new Set(items.map((i) => i.productId).filter(Boolean))]
+        const prods = productIds.length ? await q(`SELECT id, data FROM products WHERE id = ANY($1)`, [productIds]) : []
+        const priceMap: Record<string, any> = {}
+        for (const p of prods) priceMap[p.id] = p.data
+        orderTotal = items.reduce((sum, it) => {
+          const p = priceMap[it.productId] || {}
+          return sum + Number(it.qtyPackages ?? it.qty ?? 0) * Number(p.unitCost ?? p.price ?? 0)
+        }, 0)
+      }
       const fee = Number(deliveryFee || 0)
+      // amountPaid − deliveryFee must equal the order cost.
       if (Math.abs(orderTotal + fee - amountPaid) > 1e-4)
-        throw new Error('Amount, delivery fee, and order total must balance to zero')
+        throw new Error(`Amount paid minus delivery fee (${(amountPaid - fee).toFixed(2)}) must equal the order cost (${orderTotal.toFixed(2)})`)
 
       const paidAt = valueDate ? new Date(valueDate).toISOString() : now()
 
@@ -83,9 +89,10 @@ export async function editOrder(req: Request, env: Env, orderId: string): Promis
       const priceMap: Record<string, any> = {}
       for (const p of prods) priceMap[p.id] = p.data
 
+      // unit price × qty (unitsPerPackage is metadata, not a multiplier)
       const orderTotal = itemsToUse.reduce((sum, it) => {
         const p = priceMap[it.productId] || {}
-        return sum + Number(it.qtyPackages ?? it.qty ?? 0) * Number(p.unitsPerPackage ?? 1) * Number(p.unitCost ?? p.price ?? 0)
+        return sum + Number(it.qtyPackages ?? it.qty ?? 0) * Number(p.unitCost ?? p.price ?? 0)
       }, 0)
       const amt = typeof newAmountPaid === 'number' ? newAmountPaid : Number(order.amountPaid || 0)
       const fee = typeof newDeliveryFee === 'number' ? newDeliveryFee : Number(order.deliveryFee || 0)

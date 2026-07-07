@@ -40,7 +40,8 @@ export async function handleCustomer(req: Request, env: Env, parts: string[]): P
     for (const p of prods) priceMap[p.id] = p.data
     const orderTotal = items.reduce((s, it) => {
       const p = priceMap[it.productId] || {}
-      return s + Number(it.qtyPackages ?? it.qty ?? 0) * Number(p.unitsPerPackage ?? 1) * Number(p.unitCost ?? 0)
+      // unit price × qty (unitsPerPackage is metadata, not a multiplier)
+      return s + Number(it.qtyPackages ?? it.qty ?? 0) * Number(p.unitCost ?? p.price ?? 0)
     }, 0)
     const id = crypto.randomUUID()
     const data = { customerId: uid, items, status: 'booked', source: 'customer_app',

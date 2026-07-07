@@ -30,15 +30,22 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import { useSnackbar } from '../hooks/useSnackbar'
 import { useConfirmDialog } from '../hooks/useConfirmDialog'
 
-// Canonical line total — MUST match the Worker's markPaid/edit computation
-// (unitCost × unitsPerPackage × qtyPackages) or the balance check rejects the
-// payment. Falls back to `price`/`qty` for older data shapes.
+// Per-line cost = unit price × quantity. `unitCost` is the PACKAGE price;
+// `unitsPerPackage` (e.g. "15 bottles") is descriptive metadata and must NOT be
+// multiplied in. Used only as a fallback when an order has no stored cost.
 function lineTotal(it: any): number {
   const p = it?.product || {}
   const unit = Number(p.unitCost ?? p.price ?? 0)
-  const upp = Number(p.unitsPerPackage ?? 1)
   const qty = Number(it?.qtyPackages ?? it?.qty ?? 0)
-  return unit * upp * qty
+  return unit * qty
+}
+
+// The order's registered cost, fixed at booking. Prefer the stored value; only
+// recompute from line items for legacy orders that never stored one.
+function orderCost(order: any): number {
+  const stored = order?.total ?? order?.orderTotal
+  if (stored != null && stored !== '' && Number.isFinite(Number(stored))) return Number(stored)
+  return (order?.items || []).reduce((s: number, it: any) => s + lineTotal(it), 0)
 }
 
 export default function OrderDetail() {
@@ -326,7 +333,7 @@ export default function OrderDetail() {
 
   if (!order) return <Box sx={{ p: 3 }}><CircularProgress /></Box>
 
-  const computedOrderTotal = (order.items || []).reduce((sum: number, it: any) => sum + lineTotal(it), 0)
+  const computedOrderTotal = orderCost(order)
   const alreadyAmountPaid = Number(order.amountPaid || 0)
   const alreadyDeliveryFee = Number(order.deliveryFee || 0)
   const alreadyNetPaid = alreadyAmountPaid - alreadyDeliveryFee

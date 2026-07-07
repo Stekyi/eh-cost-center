@@ -140,6 +140,9 @@ export default function OrderBooking() {
         delivered: false,
         deliveredBy: '',
         amountPaid: 0,
+        // Register the order cost at booking so it stays fixed even if product
+        // prices change later (payment validates amountPaid − deliveryFee == total).
+        total: computeSubtotal(),
         customerInstructions,
       })
       showSuccess('Order created successfully!')
