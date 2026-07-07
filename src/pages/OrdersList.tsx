@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getDocById, callApi, ApiError } from '../utils/dataClient'
+import { callApi, ApiError } from '../utils/dataClient'
 import { useLiveCollection } from '../hooks/useLiveCollection'
 import { toJsDate } from '../utils/dates'
 import { Link, useNavigate } from 'react-router-dom'
@@ -47,6 +47,7 @@ export default function OrdersList() {
   // onSnapshot(orders, orderBy createdAt desc) + onSnapshot(products) → polling hooks.
   const { docs: rawOrders, refresh } = useLiveCollection('orders', { orderBy: { field: 'createdAt', dir: 'desc' } })
   const { docs: productDocs } = useLiveCollection('products')
+  const { docs: customerDocs } = useLiveCollection('customers')
   const [orders, setOrders] = useState<any[]>([])
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<'booked' | 'paid' | 'delivered'>('booked')
@@ -72,40 +73,40 @@ export default function OrdersList() {
     return map
   }, [productDocs])
 
+  // Build a customer lookup map from a single fetch instead of one HTTP request
+  // per order (previously an N+1 that fired ~1 request per order every poll).
+  const customersById = useMemo(() => {
+    const map: Record<string, any> = {}
+    customerDocs.forEach((d) => (map[d.id] = d))
+    return map
+  }, [customerDocs])
+
   useEffect(() => {
     if (rawOrders.length === 0) {
       setOrders([])
       return
     }
-    ;(async () => {
-      const enriched = await Promise.all(
-        rawOrders.map(async (o: any) => {
-          let custName = o.customerId
-          let custTel = ''
-          let custLocation = ''
-          try {
-            const cd = await getDocById('customers', o.customerId)
-            if (cd) {
-              custName = cd.name || custName
-              custTel = [cd.telephone1, cd.telephone2, cd.telephone, cd.phone].filter(Boolean).join(' / ')
-              custLocation = [cd.deliveryAddress1, cd.city].filter(Boolean).join(', ')
-            }
-          } catch (e) {}
-
-          const subtotal = (o.items || []).reduce((s: number, it: any) => {
-            const pid = String(it.productId || '')
-            const p = pid ? productsById[pid] : null
-            const unit = p ? Number(p.price ?? p.unitCost ?? 0) : 0
-            const qty = Number(it.qtyPackages ?? it.qty ?? 0)
-            return s + unit * qty
-          }, 0)
-
-          return { ...o, customerName: custName, customerTel: custTel, customerLocation: custLocation, subtotal }
-        }),
-      )
-      setOrders(enriched)
-    })()
-  }, [rawOrders, productsById])
+    const enriched = rawOrders.map((o: any) => {
+      let custName = o.customerId
+      let custTel = ''
+      let custLocation = ''
+      const cd = customersById[o.customerId]
+      if (cd) {
+        custName = cd.name || custName
+        custTel = [cd.telephone1, cd.telephone2, cd.telephone, cd.phone].filter(Boolean).join(' / ')
+        custLocation = [cd.deliveryAddress1, cd.city].filter(Boolean).join(', ')
+      }
+      const subtotal = (o.items || []).reduce((s: number, it: any) => {
+        const pid = String(it.productId || '')
+        const p = pid ? productsById[pid] : null
+        const unit = p ? Number(p.price ?? p.unitCost ?? 0) : 0
+        const qty = Number(it.qtyPackages ?? it.qty ?? 0)
+        return s + unit * qty
+      }, 0)
+      return { ...o, customerName: custName, customerTel: custTel, customerLocation: custLocation, subtotal }
+    })
+    setOrders(enriched)
+  }, [rawOrders, productsById, customersById])
 
   const filtered = orders
     .filter((o) => {

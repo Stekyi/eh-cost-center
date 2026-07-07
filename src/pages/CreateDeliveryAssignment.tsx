@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { callApi, listDocs, getDocById } from '../utils/dataClient'
+import { callApi, listDocs } from '../utils/dataClient'
 import { useLiveCollection } from '../hooks/useLiveCollection'
 import {
   Box,
@@ -50,6 +50,13 @@ export default function CreateDeliveryAssignment() {
       { field: 'delivered', op: '==', value: false },
     ],
   })
+  // Single customers fetch → map (avoids one request per order during enrichment).
+  const { docs: customerDocs } = useLiveCollection('customers')
+  const customersById = React.useMemo(() => {
+    const m: Record<string, any> = {}
+    customerDocs.forEach((d) => (m[d.id] = d))
+    return m
+  }, [customerDocs])
 
   // Load active assignments once to know which orders are already assigned
   useEffect(() => {
@@ -66,34 +73,23 @@ export default function CreateDeliveryAssignment() {
       .catch(() => {})
   }, [])
 
-  // Enrich orders with customer contact details (was getDoc per order in the snapshot)
+  // Enrich orders with customer contact details from the in-memory customers map.
   useEffect(() => {
-    let cancelled = false
-    async function enrich() {
-      const enriched = await Promise.all(
-        rawOrders.map(async (o: any) => {
-          let customerName = o.customerId || ''
-          let customerPhone = ''
-          let deliveryAddress = ''
-          try {
-            const cd = await getDocById('customers', o.customerId)
-            if (cd) {
-              customerName = cd.name || customerName
-              customerPhone = [cd.telephone1, cd.telephone2].filter(Boolean).join(' / ')
-              deliveryAddress = [cd.deliveryAddress1, cd.city].filter(Boolean).join(', ')
-            }
-          } catch {}
-          return { ...o, customerName, customerPhone, deliveryAddress }
-        }),
-      )
-      if (!cancelled) {
-        setOrders(enriched)
-        if (!ordersLoading) setLoadingOrders(false)
+    const enriched = rawOrders.map((o: any) => {
+      let customerName = o.customerId || ''
+      let customerPhone = ''
+      let deliveryAddress = ''
+      const cd = customersById[o.customerId]
+      if (cd) {
+        customerName = cd.name || customerName
+        customerPhone = [cd.telephone1, cd.telephone2].filter(Boolean).join(' / ')
+        deliveryAddress = [cd.deliveryAddress1, cd.city].filter(Boolean).join(', ')
       }
-    }
-    enrich()
-    return () => { cancelled = true }
-  }, [rawOrders, ordersLoading])
+      return { ...o, customerName, customerPhone, deliveryAddress }
+    })
+    setOrders(enriched)
+    if (!ordersLoading) setLoadingOrders(false)
+  }, [rawOrders, ordersLoading, customersById])
 
   const filtered = orders.filter((o) => {
     if (!search) return true

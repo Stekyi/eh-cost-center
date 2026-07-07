@@ -206,7 +206,7 @@ export default function OrderDetail() {
 
       // Worker records the payment + revenue and recomputes balance/paid atomically.
       await callApi(`/api/orders/${order.id}/markPaid`, {
-        body: { amount: amt, deliveryFee: fee, valueDate },
+        body: { amountPaid: amt, deliveryFee: fee, valueDate },
       })
 
       // Reload the authoritative order state to reflect server-computed totals.

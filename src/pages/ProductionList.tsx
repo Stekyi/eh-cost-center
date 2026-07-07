@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { listDocs, getDocById } from '../utils/dataClient'
+import { listDocs } from '../utils/dataClient'
 import { toJsDate } from '../utils/dates'
 import type { GridColDef } from '@mui/x-data-grid'
 import ResponsiveDataGrid from '../components/ResponsiveDataGrid'
@@ -31,16 +31,11 @@ export default function ProductionList(){
       }
     })
     setTotals(agg)
-    // resolve product names
-    const arr: Array<{ productId: string, name: string, packages: number }> = []
-    for(const pid of Object.keys(agg)){
-      let name = pid
-      try{
-        const p = await getDocById('products', pid)
-        if(p) name = p.name || name
-      }catch(e){}
-      arr.push({ productId: pid, name, packages: agg[pid] })
-    }
+    // resolve product names from a single products fetch (was 1 request per product)
+    const products = await listDocs('products')
+    const nameById: Record<string, string> = {}
+    products.forEach((p: any) => { nameById[p.id] = p.name || p.id })
+    const arr = Object.keys(agg).map((pid) => ({ productId: pid, name: nameById[pid] || pid, packages: agg[pid] }))
     setNamedTotals(arr)
   }
 
