@@ -5,7 +5,7 @@
 //   POST /api/auth/reset          { token, password }  → { ok }     (sets password)
 import { sql, type Env } from '../db'
 import { json } from '../collections'
-import { signJwt, verifyJwt, hashPassword, checkPassword } from '../auth'
+import { signJwt, verifyJwt, hashPassword, checkPassword, getClaims } from '../auth'
 
 export async function login(req: Request, env: Env): Promise<Response> {
   const { email, password } = await req.json().catch(() => ({} as any))
@@ -33,6 +33,22 @@ export async function requestReset(req: Request, env: Env): Promise<Response> {
   await sql(env)(`UPDATE users SET reset_token = $2, reset_expires = $3::timestamptz WHERE email = $1`,
     [String(email).toLowerCase(), token, expires])
   // Do not leak existence; caller sends the email out-of-band (see send-reset-emails.js).
+  return json({ ok: true })
+}
+
+// Self-service password change for the logged-in user (no email flow).
+export async function changePassword(req: Request, env: Env): Promise<Response> {
+  const claims = await getClaims(req, env)
+  if (!claims) return json({ error: 'unauthorized' }, 401)
+  const { currentPassword, newPassword } = await req.json().catch(() => ({} as any))
+  if (!newPassword || String(newPassword).length < 8) return json({ error: 'password_min_8' }, 400)
+  const [u] = await sql(env)(`SELECT password_hash FROM users WHERE uid = $1`, [claims.uid])
+  if (!u) return json({ error: 'not_found' }, 404)
+  // If a password is already set, require the current one; otherwise allow setting it.
+  if (u.password_hash && !(await checkPassword(String(currentPassword || ''), u.password_hash)))
+    return json({ error: 'current_password_incorrect' }, 401)
+  const hash = await hashPassword(String(newPassword))
+  await sql(env)(`UPDATE users SET password_hash = $2, updated_at = now() WHERE uid = $1`, [claims.uid, hash])
   return json({ ok: true })
 }
 

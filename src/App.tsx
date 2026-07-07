@@ -43,7 +43,11 @@ import DeliveryView from './pages/DeliveryView'
 import StarIcon from '@mui/icons-material/Star'
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary'
 import LocalShippingIcon from '@mui/icons-material/LocalShipping'
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
+import LockResetIcon from '@mui/icons-material/LockReset'
 import ChatButton from './components/ChatButton'
+import UsersAdmin from './pages/UsersAdmin'
+import ChangePassword from './pages/ChangePassword'
 
 type StaffRole = 'admin' | 'videographer' | 'assistant'
 
@@ -105,8 +109,9 @@ export default function App() {
 
   if (!authReady) return <div style={{ padding: 32 }}>Loading...</div>
 
-  const ProtectedRoute = ({ allowMediaOnly = false, children }: { allowMediaOnly?: boolean; children: React.ReactElement }) => {
+  const ProtectedRoute = ({ allowMediaOnly = false, anyRole = false, children }: { allowMediaOnly?: boolean; anyRole?: boolean; children: React.ReactElement }) => {
     if (!user) return <Navigate to="/login" replace />
+    if (anyRole) return children // any authenticated user (e.g. Change Password)
     if (isAssistant) return isAllowedForAssistant(location.pathname) ? children : <Navigate to="/orders" replace />
     if (allowMediaOnly ? mediaAccess : isAdmin) return children
     return <Navigate to={defaultPath} replace />
@@ -123,12 +128,14 @@ export default function App() {
     { text: 'Cust Insight', icon: <ReceiptIcon />, path: '/cust-insight' },
     { text: 'Customer Follow-Up', icon: <PeopleIcon />, path: '/customer-followup' },
     { text: 'Expense Items', icon: <ReceiptIcon />, path: '/costs' },
+    { text: 'Change Password', icon: <LockResetIcon />, path: '/change-password' },
     { text: 'Logout', icon: <MenuIcon />, action: 'logout' },
   ]
 
   const menuItems = isVideographer
     ? [
         { text: 'Media Library', icon: <PhotoLibraryIcon />, path: '/media' },
+        { text: 'Change Password', icon: <LockResetIcon />, path: '/change-password' },
         { text: 'Logout', icon: <MenuIcon />, action: 'logout' },
       ]
     : isAssistant
@@ -154,6 +161,8 @@ export default function App() {
         { text: 'Cost-Plus Meal', icon: <RestaurantIcon />, path: '/costplus/meal' },
         { text: 'Cost-Plus Juice', icon: <LocalDrinkIcon />, path: '/costplus/juice' },
         { text: 'Production', icon: <FactoryIcon />, path: '/production' },
+        ...(isAdmin ? [{ text: 'Users', icon: <ManageAccountsIcon />, path: '/users' }] : []),
+        { text: 'Change Password', icon: <LockResetIcon />, path: '/change-password' },
         { text: 'Logout', icon: <MenuIcon />, action: 'logout' },
       ]
 
@@ -310,6 +319,8 @@ export default function App() {
           <Route path="/media" element={<ProtectedRoute allowMediaOnly><MediaLibrary /></ProtectedRoute>} />
           <Route path="/delivery-assignments" element={<ProtectedRoute><DeliveryAssignments /></ProtectedRoute>} />
           <Route path="/delivery-assignments/new" element={<ProtectedRoute><CreateDeliveryAssignment /></ProtectedRoute>} />
+          <Route path="/users" element={<ProtectedRoute><UsersAdmin /></ProtectedRoute>} />
+          <Route path="/change-password" element={<ProtectedRoute anyRole><ChangePassword /></ProtectedRoute>} />
           <Route path="/d/:shortCode" element={<DeliveryView />} />
         </Routes>
         {isAdmin && <ChatButton />}

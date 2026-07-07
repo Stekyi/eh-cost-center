@@ -15,7 +15,8 @@ import { handleCollections, json } from './collections'
 import { markPaid, editOrder, deleteOrder } from './routes/orders'
 import { createAssignment, getDelivery, updateDeliveryItem, reconcile, unassignItem } from './routes/delivery'
 import { handleCustomer } from './routes/customer'
-import { login, me, requestReset, reset } from './routes/authRoutes'
+import { login, me, requestReset, reset, changePassword } from './routes/authRoutes'
+import { handleUsers } from './routes/users'
 import { ragQuery } from './routes/rag'
 import { runWeeklyOrderCount } from './cron'
 
@@ -65,8 +66,12 @@ async function route(req: Request, env: Env): Promise<Response> {
     if (req.method === 'GET' && parts[1] === 'me') return me(req, env)
     if (req.method === 'POST' && parts[1] === 'request-reset') return requestReset(req, env)
     if (req.method === 'POST' && parts[1] === 'reset') return reset(req, env)
+    if (req.method === 'POST' && parts[1] === 'change-password') return changePassword(req, env)
     return json({ error: 'not_found' }, 404)
   }
+
+  // User management (admin only)
+  if (parts[0] === 'users') return handleUsers(req, env, parts)
 
   // Collections (generic CRUD)
   if (parts[0] === 'collections') {

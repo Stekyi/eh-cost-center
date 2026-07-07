@@ -36,6 +36,13 @@ export default function CreateCustomerModal({ open, onClose, onCreated }: Props)
   const [deliveryAddress1, setDeliveryAddress1] = useState('')
   const [deliveryAddress2, setDeliveryAddress2] = useState('')
   const [profile, setProfile] = useState('')
+  // Personal / health information (all optional)
+  const [weightKg, setWeightKg] = useState('')
+  const [heightCm, setHeightCm] = useState('')
+  const [age, setAge] = useState('')
+  const [sugarLevel, setSugarLevel] = useState('')
+  const [bloodPressure, setBloodPressure] = useState('')
+  const [cholesterol, setCholesterol] = useState('')
   const [categoryCodes, setCategoryCodes] = useState<string[]>([])
   const [allergyCodes, setAllergyCodes] = useState<string[]>([])
   const { docs: categoryDocs } = useLiveCollection('customerCategories')
@@ -56,6 +63,7 @@ export default function CreateCustomerModal({ open, onClose, onCreated }: Props)
     if (!open) {
       setName(''); setTelephone1(''); setTelephone2(''); setDob(''); setCity('')
       setDeliveryAddress1(''); setDeliveryAddress2(''); setProfile('')
+      setWeightKg(''); setHeightCm(''); setAge(''); setSugarLevel(''); setBloodPressure(''); setCholesterol('')
       setCategoryCodes([]); setAllergyCodes([]); setSaving(false); setNameError('')
     }
   }, [open])
@@ -82,6 +90,14 @@ export default function CreateCustomerModal({ open, onClose, onCreated }: Props)
         deliveryAddress1: deliveryAddress1 || null,
         deliveryAddress2: deliveryAddress2 || null,
         profile: profile || null,
+        personalInfo: {
+          weightKg: weightKg ? Number(weightKg) : null,
+          heightCm: heightCm ? Number(heightCm) : null,
+          age: age ? Number(age) : null,
+          sugarLevel: sugarLevel.trim() || null,
+          bloodPressure: bloodPressure.trim() || null,
+          cholesterol: cholesterol.trim() || null,
+        },
         categoryCodes,
         allergyCodes,
       })
@@ -189,6 +205,57 @@ export default function CreateCustomerModal({ open, onClose, onCreated }: Props)
                 rows={2}
               />
             </Box>
+
+            {/* Personal Information (health) */}
+            <Box sx={{ gridColumn: '1 / -1', mt: 1 }}>
+              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>Personal Information</Typography>
+              <Typography variant="caption" color="text.secondary">All optional — leave blank if unknown.</Typography>
+            </Box>
+            <TextField
+              label="Current weight"
+              value={weightKg}
+              onChange={(e) => setWeightKg(e.target.value)}
+              fullWidth size="small" type="number"
+              InputProps={{ endAdornment: <Typography variant="caption" color="text.secondary">kg</Typography> }}
+              inputProps={{ min: 0, step: '0.1' }}
+            />
+            <TextField
+              label="Height"
+              value={heightCm}
+              onChange={(e) => setHeightCm(e.target.value)}
+              fullWidth size="small" type="number"
+              InputProps={{ endAdornment: <Typography variant="caption" color="text.secondary">cm</Typography> }}
+              inputProps={{ min: 0, step: '0.1' }}
+            />
+            <TextField
+              label="Age"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              fullWidth size="small" type="number"
+              InputProps={{ endAdornment: <Typography variant="caption" color="text.secondary">years</Typography> }}
+              inputProps={{ min: 0, step: '1' }}
+            />
+            <TextField
+              label="Current sugar level (if known)"
+              value={sugarLevel}
+              onChange={(e) => setSugarLevel(e.target.value)}
+              fullWidth size="small"
+              placeholder="e.g. 5.6 mmol/L"
+            />
+            <TextField
+              label="Current blood pressure (if known)"
+              value={bloodPressure}
+              onChange={(e) => setBloodPressure(e.target.value)}
+              fullWidth size="small"
+              placeholder="e.g. 120/80"
+            />
+            <TextField
+              label="Cholesterol level (if known)"
+              value={cholesterol}
+              onChange={(e) => setCholesterol(e.target.value)}
+              fullWidth size="small"
+              placeholder="e.g. 4.5 mmol/L"
+            />
 
             {/* Categories */}
             <Box sx={{ gridColumn: '1 / -1' }}>
