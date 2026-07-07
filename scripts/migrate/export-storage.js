@@ -19,15 +19,23 @@ async function main() {
   const manifest = []
   console.log(`Downloading ${files.length} objects from ${bucket.name}…`)
 
+  let failed = 0
   for (const file of files) {
     if (file.name.endsWith('/')) continue // skip folder placeholders
     const dest = path.join(OUT_DIR, file.name)
     fs.mkdirSync(path.dirname(dest), { recursive: true })
-    await file.download({ destination: dest })
-    const contentType = file.metadata.contentType || 'application/octet-stream'
-    manifest.push({ key: file.name, contentType, size: Number(file.metadata.size || 0) })
-    console.log(`  ${file.name}`)
+    try {
+      await file.download({ destination: dest })
+      const contentType = file.metadata.contentType || 'application/octet-stream'
+      manifest.push({ key: file.name, contentType, size: Number(file.metadata.size || 0) })
+      console.log(`  ${file.name}`)
+    } catch (err) {
+      failed++
+      console.warn(`  ! skip (download failed): ${file.name} — ${err.message?.split('\n')[0] || err}`)
+      try { fs.rmSync(dest, { force: true }) } catch {}
+    }
   }
+  if (failed) console.log(`(${failed} object(s) could not be downloaded — likely dangling references)`)
 
   fs.writeFileSync(path.join(OUT_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2))
   console.log(`\nDone. ${manifest.length} objects + manifest → ${OUT_DIR}`)
