@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "functions:build": "tsc -p functions/",
+    "functions:build": "tsc -p firebase-functions/",
     "emulate": "firebase emulators:start --only firestore,functions",
     "seed": "node ./scripts/seed.js",
     "smoke": "node ./scripts/smokeTest.js",

@@ -41,3 +41,7 @@ serviceAccountKey.json
 conversation.md
 sandbox.ipynb
 *fromfirebase*
+
+# Legacy Firebase functions (renamed out of Pages-reserved functions/)
+firebase-functions/node_modules/
+firebase-functions/lib/
