@@ -30,6 +30,17 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import { useSnackbar } from '../hooks/useSnackbar'
 import { useConfirmDialog } from '../hooks/useConfirmDialog'
 
+// Canonical line total — MUST match the Worker's markPaid/edit computation
+// (unitCost × unitsPerPackage × qtyPackages) or the balance check rejects the
+// payment. Falls back to `price`/`qty` for older data shapes.
+function lineTotal(it: any): number {
+  const p = it?.product || {}
+  const unit = Number(p.unitCost ?? p.price ?? 0)
+  const upp = Number(p.unitsPerPackage ?? 1)
+  const qty = Number(it?.qtyPackages ?? it?.qty ?? 0)
+  return unit * upp * qty
+}
+
 export default function OrderDetail() {
   const DELETE_PASSCODE = '2018'
   const { id } = useParams()
@@ -315,11 +326,7 @@ export default function OrderDetail() {
 
   if (!order) return <Box sx={{ p: 3 }}><CircularProgress /></Box>
 
-  const computedOrderTotal = (order.items || []).reduce((sum: number, it: any) => {
-    const unit = Number(it?.product?.price ?? it?.product?.unitCost ?? 0)
-    const qty = Number(it?.qtyPackages ?? it?.qty ?? 0)
-    return sum + unit * qty
-  }, 0)
+  const computedOrderTotal = (order.items || []).reduce((sum: number, it: any) => sum + lineTotal(it), 0)
   const alreadyAmountPaid = Number(order.amountPaid || 0)
   const alreadyDeliveryFee = Number(order.deliveryFee || 0)
   const alreadyNetPaid = alreadyAmountPaid - alreadyDeliveryFee
@@ -771,11 +778,7 @@ interface OrderSummaryCardProps {
 }
 
 function OrderSummaryCard({ type, customerName, customerPhone, orderDate, items, orderTotal, deliveryFee, amountPaid, balance, paid }: OrderSummaryCardProps) {
-  const subtotal = items.reduce((s: number, it: any) => {
-    const unit = Number(it?.product?.price ?? it?.product?.unitCost ?? 0)
-    const qty = Number(it?.qtyPackages ?? it?.qty ?? 0)
-    return s + unit * qty
-  }, 0)
+  const subtotal = items.reduce((s: number, it: any) => s + lineTotal(it), 0)
   const grandTotal = subtotal + deliveryFee
 
   const cell: React.CSSProperties = { padding: '8px 10px', borderBottom: '1px solid #e5e7eb', fontSize: 14 }

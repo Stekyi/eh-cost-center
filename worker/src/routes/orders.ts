@@ -30,7 +30,9 @@ export async function markPaid(req: Request, env: Env, orderId: string): Promise
 
       const orderTotal = items.reduce((sum, it) => {
         const p = priceMap[it.productId] || {}
-        return sum + Number(it.qtyPackages || 0) * Number(p.unitsPerPackage || 1) * Number(p.unitCost || 0)
+        // Must match the frontend lineTotal() in OrderDetail.tsx exactly.
+        const unit = Number(p.unitCost ?? p.price ?? 0)
+        return sum + Number(it.qtyPackages ?? it.qty ?? 0) * Number(p.unitsPerPackage ?? 1) * unit
       }, 0)
       const fee = Number(deliveryFee || 0)
       if (Math.abs(orderTotal + fee - amountPaid) > 1e-4)
