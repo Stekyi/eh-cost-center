@@ -1,0 +1,43 @@
+# Node
+node_modules/
+dist/
+.DS_Store
+
+# Env
+.env.local
+.env*
+!.env.example
+!.env.production
+
+# Editor/tooling temp files
+*.tmp
+
+# Migration artifacts (raw Firebase export — archive off-repo, never commit)
+migration-data/
+worker/.dev.vars
+
+# Secrets — Neon connection string etc. NEVER commit.
+neon_conn_str.md
+
+# Worker build/deps
+worker/node_modules/
+
+# Firebase Functions build output
+functions/lib/
+functions/node_modules/
+
+# Logs
+*.lognode_modules/
+dist/
+/.firebase/
+functions/node_modules/
+functions/lib/
+env.local
+*.log
+serviceAccountKey.json
+.vercel
+
+# Working docs / dumps that may contain secrets — never commit
+conversation.md
+sandbox.ipynb
+*fromfirebase*

@@ -1,0 +1,4 @@
+# Cloudflare Pages SPA fallback — serve index.html for client-side routes.
+# API traffic goes directly to the Worker via VITE_API_BASE (cross-origin, CORS *),
+# so it is NOT proxied here.
+/*    /index.html   200

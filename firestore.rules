@@ -1,0 +1,135 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ──
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.role == 'admin'
+      );
+    }
+    function isAssistant() {
+      return isSignedIn() && request.auth.token.role == 'assistant';
+    }
+    function isVideographer() {
+      return isSignedIn() && request.auth.token.role == 'videographer';
+    }
+    function canManageGallery() {
+      return isAdmin() || isVideographer();
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ── Admin-only collections ──
+    // Staff, assets, expenses, revenue, audit logs — internal use only
+    match /staff/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /assets/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /expenseItems/{docId} {
+      allow read, write: if isAdmin();
+      allow read, create, update: if isAssistant();
+    }
+    match /expenseCategories/{docId} {
+      allow read, write: if isAdmin();
+      allow read: if isAssistant();
+    }
+    match /revenue/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /orders_audit/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /expenseItems_audit/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /expenseItems_archive/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /product_audit/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /customer_followups/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── Products — admin writes, any signed-in user reads ──
+    match /products/{productId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Customer categories & allergies — read-only for customers ──
+    match /customerCategories/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /customerAllergies/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Customers — customers can read/write own doc; admin can access all ──
+    match /customers/{customerId} {
+      allow read, write: if isAdmin();
+      allow read, create, update: if isAssistant();
+      allow read, write: if isOwner(customerId);
+      allow create: if isSignedIn() && request.auth.uid == customerId;
+    }
+
+    // ── Orders — customers create & read own; admin full access ──
+    match /orders/{orderId} {
+      allow read, write: if isAdmin();
+      allow read, create, update: if isAssistant();
+      allow create: if isSignedIn()
+        && request.resource.data.customerId == request.auth.uid;
+      allow read: if isSignedIn()
+        && resource.data.customerId == request.auth.uid;
+      // Customers cannot update or delete orders (handled by Cloud Functions)
+
+      // Payments subcollection
+      match /payments/{paymentId} {
+        allow read, write: if isAdmin();
+        allow read: if isSignedIn()
+          && get(/databases/$(database)/documents/orders/$(orderId)).data.customerId == request.auth.uid;
+      }
+    }
+
+    // ── Product reviews — customers create/edit own; everyone reads ──
+    match /product_reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.customerId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.customerId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ── Top customers — customers read only own; admin full access ──
+    match /top_customers/{docId} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn()
+        && resource.data.customerId == request.auth.uid;
+    }
+
+    // ── Gallery — publicly readable (customer app, no auth required); admin write ──
+    match /gallery/{docId} {
+      allow read: if true;
+      allow write: if canManageGallery();
+    }
+
+    // ── Delivery assignments — admin only via client SDK ──
+    // Public access to delivery data goes through Cloud Functions (admin SDK),
+    // which bypasses these rules entirely. Direct client access is admin-only.
+    match /delivery_assignments/{docId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

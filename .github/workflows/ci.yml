@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install deps
+        run: |
+          npm ci
+          cd functions && npm ci && cd ..
+      - name: Build functions
+        run: |
+          cd functions && npm run build --if-present || true && cd ..
+      - name: Build frontend
+        run: npm run build --if-present
+      - name: Lint (optional)
+        run: npm run lint --if-present

@@ -1,0 +1,41 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.admin == true ||
+        request.auth.token.role == 'admin'
+      );
+    }
+
+    function canManageGallery() {
+      return request.auth != null && (
+        isAdmin() ||
+        request.auth.token.role == 'videographer'
+      );
+    }
+
+    // Product images and audio — admin can write, any authenticated user can read
+    match /products/{productId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Product component images (sub-photos tagged to products)
+    match /products/{productId}/components/{fileName} {
+      allow read: if true; // public — customer app reads without auth
+      allow write: if isAdmin();
+    }
+
+    // Gallery media — publicly readable so customer app can display without auth
+    match /gallery/{docId}/{fileName} {
+      allow read: if true;
+      allow write: if canManageGallery();
+    }
+
+    // Default: deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

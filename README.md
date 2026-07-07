@@ -1,5 +1,33 @@
 # EH Cost Center
 
+## Vercel + HuggingFace Embedding Proxy Setup
+
+This project supports client-side RAG (Retrieval Augmented Generation) using HuggingFace embeddings, with a Vercel serverless function as a proxy to avoid CORS issues.
+
+### Deployment Steps
+
+1. **Push your latest code to your Vercel-connected Git repository** (or use `vercel deploy` from the CLI).
+2. **Set the HuggingFace API token in Vercel dashboard:**
+   - Go to your Vercel project settings → Environment Variables.
+   - Add:
+     - `HUGGINGFACE_API_TOKEN=<your-huggingface-token>`
+3. **Deploy your project to Vercel.**
+   - Vercel will build the frontend and deploy the `/api/embed` serverless function.
+4. **Test the app at your Vercel URL:**
+   - Open the chat modal.
+   - Switch to "Client RAG" mode.
+   - Enter a query. Embedding requests will go through `/api/embed` (no CORS issues).
+
+### Local Development
+- In local/dev, the frontend will call HuggingFace directly (using the token from `.env.local`).
+- In production (Vercel or `web.app`), the frontend will POST to `/api/embed`.
+
+### Troubleshooting
+- If you get CORS errors in production, make sure you are using the Vercel `/api/embed` endpoint and that your token is set in the Vercel dashboard.
+- If you get 401/403 errors, check that your HuggingFace token is valid and not rate-limited.
+
+---
+
 Minimal scaffold for EH Cost Center app (React + Firebase). This project is a starting point. Follow the steps below to finish setup and deploy.
 
 Quick start
@@ -17,12 +45,28 @@ npm install
 firebase init hosting functions firestore
 ```
 
-3. Generate bcrypt hash for password `1234` and set functions config (example):
+3. (OPTIONAL) If you want to use Cloud Functions for auth/payments you'll need a Blaze plan.
+	This repo includes a no-functions alternative below so you can run on the Firebase free tier.
+
+No-Blaze (free tier) setup — use Email/Password admin + security rules
+
+- Create an admin user in the Firebase Console → Authentication → Add user (pick an email, e.g. `admin@example.com` and a password).
+- Update `firestore.rules` and replace the placeholder admin email `ADMIN_EMAIL@example.com` with the admin email you created.
+- The app now uses Email/Password sign-in (see `src/pages/Login.tsx`).
+
+After that you can `npm run build` and `firebase deploy --only hosting` to publish the frontend and use Firestore from the client.
+
+Create admin users via script (optional)
+
+1. Create a service account key in the Firebase Console → Project Settings → Service accounts → Generate new private key.
+2. Save the JSON file and set `GOOGLE_APPLICATION_CREDENTIALS` to its path.
+3. Run:
 
 ```bash
-node -e "console.log(require('bcryptjs').hashSync('1234',10))"
-firebase functions:config:set auth.username="Angela" auth.password_hash="<PASTE_HASH>"
+node scripts/create_admins.js
 ```
+
+The script will create the two admin users and set a custom claim `admin: true` on each. The default password is `1234` as requested. You can change the password in the script before running if desired.
 
 4. Run dev server:
 

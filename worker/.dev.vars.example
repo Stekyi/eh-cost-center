@@ -1,0 +1,7 @@
+# Copy to worker/.dev.vars for `wrangler dev`. NEVER commit the real file.
+NEON_DATABASE_URL="postgresql://user:pass@ep-xxxx.region.aws.neon.tech/dbname?sslmode=require"
+JWT_SECRET="generate-a-32+-byte-random-string"
+R2_PUBLIC_BASE="https://media.example.com"
+HUGGINGFACE_API_TOKEN=""
+FIREWORKS_API_KEY=""
+RAG_ALLOW_ANON="false"

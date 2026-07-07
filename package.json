@@ -1,0 +1,44 @@
+{
+  "name": "eh-cost-center",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "functions:build": "tsc -p functions/",
+    "emulate": "firebase emulators:start --only firestore,functions",
+    "seed": "node ./scripts/seed.js",
+    "smoke": "node ./scripts/smokeTest.js",
+    "db:schema": "psql \"$NEON_DATABASE_URL\" -f db/schema.sql",
+    "migrate:export": "node scripts/migrate/export-firestore.js && node scripts/migrate/export-users.js && node scripts/migrate/export-storage.js",
+    "migrate:import": "node scripts/migrate/import-neon.js && node scripts/migrate/import-r2.js && node scripts/migrate/migrate-users.js",
+    "migrate:verify": "node scripts/migrate/verify-parity.js"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "@mui/icons-material": "^7.3.6",
+    "@mui/material": "^7.3.6",
+    "@mui/x-data-grid": "^8.23.0",
+    "@popperjs/core": "^2.11.8",
+    "firebase": "^9.22.1",
+    "firebase-admin": "^11.11.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.17.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.658.0",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7",
+    "@vitejs/plugin-react": "^5.0.1",
+    "pg": "^8.13.0",
+    "typescript": "^5.1.6",
+    "vite": "^5.3.2"
+  }
+}
